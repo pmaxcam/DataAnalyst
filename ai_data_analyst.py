@@ -132,59 +132,28 @@ Return only the SQL query, enclosed in ```sql ``` and give the final answer."""
                 st.warning("Please enter a query.")
             else:
                 try:
-                    # Show loading spinner while processing
                     with st.spinner('Processing your query...'):
-                        # # Add logging
-                        # st.write("Debug: Starting query processing")
-                        # print("Debug: Starting query processing")
-
-                        # Get the response from DuckDbAgent
-                        # st.write("Debug: Calling DuckDbAgent.run()")
-                        # print("Debug: Calling DuckDbAgent.run()")
-                        response1 = duckdb_agent.run(user_query)
-
-                        # st.write(f"Debug: Initial response type: {type(response1)}")
-                        # print(f"Debug: Initial response type: {type(response1)}")
-                        # st.write(f"Debug: Initial response: {response1}")
-                        # print(f"Debug: Initial response: {response1}")
-
-                        # Extract the content from the RunResponse object
-                        if hasattr(response1, 'content'):
-                            response_content = response1.content
-                            # st.write("Debug: Found content attribute")
-                            # print("Debug: Found content attribute")
-                        else:
-                            response_content = str(response1)
-                            # st.write("Debug: Using string representation")
-                            # print("Debug: Using string representation")
-
-                        # st.write(f"Debug: Response content: {response_content}")
-                        # print(f"Debug: Response content: {response_content}")
-
-                        # st.write("Debug: Calling print_response")
-                        # print("Debug: Calling print_response")
-                        response = duckdb_agent.print_response(
-                            user_query,
-                            stream=True,
-                        )
-
-                        # st.write(f"Debug: Final response: {response}")
-                        # print(f"Debug: Final response: {response}")
-
-                    # Display the response in Streamlit
-                    # Extract just the first line of the response
-                    response_lines = response_content.split('\n')
-                    first_line = response_lines[0] if response_lines else response_content
-                    st.markdown(first_line)
+                        # Create a placeholder for the streaming output
+                        response_placeholder = st.empty()
+                        
+                        # Capture the streamed response
+                        response = duckdb_agent.run(user_query, stream=True)  # Assuming run supports streaming
+                        
+                        # If response is an iterator or generator
+                        full_response = ""
+                        for chunk in response:
+                            if hasattr(chunk, 'content'):
+                                content = chunk.content
+                            else:
+                                content = str(chunk)
+                            full_response += content
+                            response_placeholder.markdown(full_response)
 
                 except Exception as e:
                     st.error(f"Error generating response from the DuckDbAgent: {e}")
                     st.error("Please try rephrasing your query or check if the data format is correct.")
-                    # Add exception details to logs
                     st.write("Debug: Exception details:")
                     st.write(traceback.format_exc())
-                    print("Debug: Exception details:")
-                    print(traceback.format_exc())
 
 else:
     if not openai_key:
