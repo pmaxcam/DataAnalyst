@@ -1,6 +1,7 @@
 streamlit
 pandas
-phi-agent
+phidata
 openai
 duckdb
 python-dotenv
+openpyxl

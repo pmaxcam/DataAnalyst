@@ -15,9 +15,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Try to set API key if not already set
-if not os.getenv("OPENAI_API_KEY"):
-    st.error("Please set your OpenAI API key in the app settings")
-    st.stop()
+openai_key = os.getenv("OPENAI_API_KEY")
+if not openai_key:
+    # Try to get from Streamlit secrets
+    try:
+        openai_key = st.secrets["OPENAI_API_KEY"]
+        os.environ["OPENAI_API_KEY"] = openai_key
+    except:
+        st.error("Please set your OpenAI API key in the app settings")
+        st.stop()
 
 # Function to preprocess and save the uploaded file
 def preprocess_and_save(file):
