@@ -1,0 +1,6 @@
+streamlit
+pandas
+phi-agent
+openai
+duckdb
+python-dotenv
