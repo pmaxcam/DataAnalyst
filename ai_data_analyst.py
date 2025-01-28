@@ -125,7 +125,7 @@ Return only the SQL query, enclosed in ```sql ``` and give the final answer."""
         user_query = st.text_area("Ask a query about the data:")
 
         # Add info message about terminal output
-        st.info("💡 Check your terminal for a clearer output of the agent's response")
+        # st.info("💡 Check your terminal for a clearer output of the agent's response")
 
         if st.button("Submit Query"):
             if user_query.strip() == "":
@@ -134,45 +134,48 @@ Return only the SQL query, enclosed in ```sql ``` and give the final answer."""
                 try:
                     # Show loading spinner while processing
                     with st.spinner('Processing your query...'):
-                        # Add logging
-                        st.write("Debug: Starting query processing")
-                        print("Debug: Starting query processing")
+                        # # Add logging
+                        # st.write("Debug: Starting query processing")
+                        # print("Debug: Starting query processing")
 
                         # Get the response from DuckDbAgent
-                        st.write("Debug: Calling DuckDbAgent.run()")
-                        print("Debug: Calling DuckDbAgent.run()")
+                        # st.write("Debug: Calling DuckDbAgent.run()")
+                        # print("Debug: Calling DuckDbAgent.run()")
                         response1 = duckdb_agent.run(user_query)
 
-                        st.write(f"Debug: Initial response type: {type(response1)}")
-                        print(f"Debug: Initial response type: {type(response1)}")
-                        st.write(f"Debug: Initial response: {response1}")
-                        print(f"Debug: Initial response: {response1}")
+                        # st.write(f"Debug: Initial response type: {type(response1)}")
+                        # print(f"Debug: Initial response type: {type(response1)}")
+                        # st.write(f"Debug: Initial response: {response1}")
+                        # print(f"Debug: Initial response: {response1}")
 
                         # Extract the content from the RunResponse object
                         if hasattr(response1, 'content'):
                             response_content = response1.content
-                            st.write("Debug: Found content attribute")
-                            print("Debug: Found content attribute")
+                            # st.write("Debug: Found content attribute")
+                            # print("Debug: Found content attribute")
                         else:
                             response_content = str(response1)
-                            st.write("Debug: Using string representation")
-                            print("Debug: Using string representation")
+                            # st.write("Debug: Using string representation")
+                            # print("Debug: Using string representation")
 
-                        st.write(f"Debug: Response content: {response_content}")
-                        print(f"Debug: Response content: {response_content}")
+                        # st.write(f"Debug: Response content: {response_content}")
+                        # print(f"Debug: Response content: {response_content}")
 
-                        st.write("Debug: Calling print_response")
-                        print("Debug: Calling print_response")
+                        # st.write("Debug: Calling print_response")
+                        # print("Debug: Calling print_response")
                         response = duckdb_agent.print_response(
                             user_query,
                             stream=True,
                         )
 
-                        st.write(f"Debug: Final response: {response}")
-                        print(f"Debug: Final response: {response}")
+                        # st.write(f"Debug: Final response: {response}")
+                        # print(f"Debug: Final response: {response}")
 
                     # Display the response in Streamlit
-                    st.markdown(response_content)
+                    # Extract just the first line of the response
+                    response_lines = response_content.split('\n')
+                    first_line = response_lines[0] if response_lines else response_content
+                    st.markdown(first_line)
 
                 except Exception as e:
                     st.error(f"Error generating response from the DuckDbAgent: {e}")
