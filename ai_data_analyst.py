@@ -10,6 +10,7 @@ from phi.tools.pandas import PandasTools
 import re
 import traceback
 from dotenv import load_dotenv
+from utils import preprocess_csv_file
 
 # Load environment variables from .env file
 load_dotenv()
@@ -41,6 +42,8 @@ def preprocess_and_save(file):
         with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp_file:
             temp_path = temp_file.name
             
+        df = preprocess_csv_file(df, st.secrets["OPENAI_API_KEY"])
+        
         # Generate column metadata for the semantic model
         column_metadata = []
         for col in df.columns:
@@ -54,7 +57,8 @@ def preprocess_and_save(file):
                 "type": col_type,
                 "sample_values": sample_values,
                 "description": f"Contains {col_type} values like {', '.join(map(str, sample_values[:3]))}"
-            }
+            } 
+            
             column_metadata.append(metadata)
 
         # Update semantic model with detailed column information
