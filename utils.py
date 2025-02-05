@@ -1,20 +1,17 @@
+import pandas as pd
 from pydantic import BaseModel
 from openai import OpenAI
-from typing import Optional
-import pandas as pd
-import os
 
 class BooleanResponse(BaseModel):
     result: bool
 
-def preprocess_csv_file(dataframe: str, openai_api_key: str) -> str:
+def preprocess_csv_file(dataframe: pd.DataFrame, openai_client: OpenAI) -> pd.DataFrame:
     try:
         df = dataframe
         df = df.replace(r'^\s*$', pd.NA, regex=True)
         df = df.dropna(how='all', axis=0)  
         df_removed_blank_rows = df.dropna(how='all', axis=1)  
 
-        client = OpenAI(api_key=openai_api_key)
         sample_df = df.head(10).iloc[:, :10]
         csv_preview = sample_df.to_string()
         
@@ -27,7 +24,7 @@ def preprocess_csv_file(dataframe: str, openai_api_key: str) -> str:
             "false if the headers are already vertical."
         )
         
-        completion = client.beta.chat.completions.parse(
+        completion = openai_client.beta.chat.completions.parse(
             model="gpt-4o-mini-2024-07-18",
             messages=[
                 {"role": "system", "content": "You are a data structure analyzer. Evaluate if the CSV data needs transposition."},
