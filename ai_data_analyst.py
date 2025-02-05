@@ -114,7 +114,7 @@ def _preprocess_and_save_xlsx(file, tmp_dir: Path):
         temp_path = tmp_dir / f"{uuid.uuid4()}.csv"
         tables.append(
             {
-                "name": "_".join(sheet_name.split(" ")),
+                "name": sheet_name.replace(" ", "_").replace("-", "_").replace(".", "_"),
                 "description": f"Contains the data from the sheet: {sheet_name}",
                 "path": temp_path,
                 "columns": column_metadata,
@@ -167,16 +167,11 @@ if uploaded_file is not None and openai_key:
     with tempfile.TemporaryDirectory() as _tmp_dir:
         tmp_dir = Path(_tmp_dir)
         temp_paths, columns_per_df, dfs, semantic_model = preprocess_and_save(uploaded_file, tmp_dir)
-
-        if temp_paths and columns_per_df and dfs is not None:
-            # Display the uploaded data as a table
-            st.write("Uploaded Data:")
-            for df in dfs:
-                st.dataframe(df.head())
-
-            # Display the columns of the uploaded data
-            st.write("Uploaded columns:", columns_per_df)
-
+        if temp_paths and columns_per_df and dfs is not None:            
+            with st.expander("Raw Uploaded Data"):
+                for df, table in zip(dfs, semantic_model["tables"]):
+                    st.write(table["name"])
+                    st.dataframe(df.head())
             # Initialize the DuckDbAgent with enhanced system prompt
             duckdb_agent = DuckDbAgent(
                 model=OpenAIChat(model="gpt-4o", api_key=openai_key),
@@ -196,11 +191,10 @@ if uploaded_file is not None and openai_key:
 
             # Main query input widget
             user_query = st.text_area("Ask a query about the data:")
-
+            submit_query = st.button("Submit Query")
             # Add info message about terminal output
             # st.info("💡 Check your terminal for a clearer output of the agent's response")
-
-            if st.button("Submit Query"):
+            if submit_query:
                 if user_query.strip() == "":
                     st.warning("Please enter a query.")
                 else:
