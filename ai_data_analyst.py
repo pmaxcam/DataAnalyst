@@ -29,7 +29,7 @@ if not openai_key:
     except:
         st.error("Please set your OpenAI API key in the app settings")
         st.stop()
-    
+
 openai_client = OpenAI(api_key=openai_key)
 
 
@@ -82,12 +82,15 @@ def _preprocess_and_save_xlsx(file, tmp_dir: Path):
     columns_per_df = []
     dfs = []
 
-
     for sheet_name in excel_file.sheet_names:
         assert isinstance(sheet_name, str)
 
         df = pd.read_excel(
-            file, sheet_name=sheet_name, na_values=["NA", "N/A", "missing"]
+            file,
+            sheet_name=sheet_name,
+            na_values=["NA", "N/A", "missing"],
+            # US date format
+            date_format="%m-%d-%Y",
         )
 
         df = preprocess_csv_file(df, openai_client=openai_client)
@@ -114,7 +117,9 @@ def _preprocess_and_save_xlsx(file, tmp_dir: Path):
         temp_path = tmp_dir / f"{uuid.uuid4()}.csv"
         tables.append(
             {
-                "name": sheet_name.replace(" ", "_").replace("-", "_").replace(".", "_"),
+                "name": sheet_name.replace(" ", "_")
+                .replace("-", "_")
+                .replace(".", "_"),
                 "description": f"Contains the data from the sheet: {sheet_name}",
                 "path": temp_path,
                 "columns": column_metadata,
@@ -166,8 +171,10 @@ if uploaded_file is not None and openai_key:
     # Preprocess and save the uploaded file
     with tempfile.TemporaryDirectory() as _tmp_dir:
         tmp_dir = Path(_tmp_dir)
-        temp_paths, columns_per_df, dfs, semantic_model = preprocess_and_save(uploaded_file, tmp_dir)
-        if temp_paths and columns_per_df and dfs is not None:            
+        temp_paths, columns_per_df, dfs, semantic_model = preprocess_and_save(
+            uploaded_file, tmp_dir
+        )
+        if temp_paths and columns_per_df and dfs is not None:
             with st.expander("Raw Uploaded Data"):
                 for df, table in zip(dfs, semantic_model["tables"]):
                     st.write(table["name"])
