@@ -14,7 +14,7 @@ from phi.tools.pandas import PandasTools
 import re
 import traceback
 from dotenv import load_dotenv
-from utils import preprocess_csv_file
+from utils import preprocess_csv_file, guess_column_descriptions
 
 # Load environment variables from .env file
 load_dotenv()
@@ -39,6 +39,7 @@ def _preprocess_and_save_csv(file, tmp_dir: Path):
 
     # Generate column metadata for the semantic model
     column_metadata = []
+    column_descriptions = guess_column_descriptions(df, openai_client=openai_client)
     for col in df.columns:
         col_type = str(df[col].dtype)
         # Convert sample values to strings to handle timestamps and other non-JSON serializable types
@@ -51,7 +52,7 @@ def _preprocess_and_save_csv(file, tmp_dir: Path):
             "name": col,
             "type": col_type,
             "sample_values": sample_values,
-            "description": f"Contains {col_type} values like {', '.join(map(str, sample_values[:3]))}",
+            "description": f"Contains {col_type} values like {', '.join(map(str, sample_values[:3]))}. {column_descriptions[col]}",
         }
 
         column_metadata.append(metadata)
@@ -97,6 +98,7 @@ def _preprocess_and_save_xlsx(file, tmp_dir: Path):
 
         # Generate column metadata for the semantic model
         column_metadata = []
+        column_descriptions = guess_column_descriptions(df, openai_client=openai_client)
         for col in df.columns:
             col_type = str(df[col].dtype)
             # Convert sample values to strings to handle timestamps and other non-JSON serializable types
@@ -105,11 +107,12 @@ def _preprocess_and_save_xlsx(file, tmp_dir: Path):
                 str(val) for val in sample_values
             ]  # Convert all values to strings
 
+            description = column_descriptions.get(col, "")
             metadata = {
                 "name": col,
                 "type": col_type,
                 "sample_values": sample_values,
-                "description": f"Contains {col_type} values like {', '.join(map(str, sample_values[:3]))}",
+                "description": f"Contains {col_type} values like {', '.join(map(str, sample_values[:3]))}. {description}",
             }
 
             column_metadata.append(metadata)
