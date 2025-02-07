@@ -19,18 +19,31 @@ from utils import preprocess_csv_file, guess_column_descriptions
 # Load environment variables from .env file
 load_dotenv()
 
-# Try to set API key if not already set
-openai_key = os.getenv("OPENAI_API_KEY")
-if not openai_key:
-    # Try to get from Streamlit secrets
+# Try to get API key from multiple sources
+def get_openai_api_key():
+    # First try environment variable
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        return api_key
+    
+    # Then try Streamlit secrets
     try:
-        openai_key = st.secrets["OPENAI_API_KEY"]
-        os.environ["OPENAI_API_KEY"] = openai_key
+        api_key = st.secrets["OPENAI_API_KEY"]
+        os.environ["OPENAI_API_KEY"] = api_key  # Set it in environment for other components
+        return api_key
     except:
-        st.error("Please set your OpenAI API key in the app settings")
-        st.stop()
+        return None
 
-openai_client = OpenAI(api_key=openai_key)
+# Get the API key
+openai_key = get_openai_api_key()
+
+# Initialize OpenAI client if key is available
+if openai_key:
+    openai_client = OpenAI(api_key=openai_key)
+    st.success("API key loaded successfully.")
+else:
+    st.error("Please set your OpenAI API key in the environment variables or Streamlit secrets.")
+    st.stop()
 
 
 def _preprocess_and_save_csv(file, tmp_dir: Path):
@@ -156,21 +169,11 @@ def preprocess_and_save(file, tmp_dir: Path):
 # Streamlit app
 st.title("📊 Data Analyst Agent")
 
-# Retrieve the API key from environment variables
-openai_key = os.getenv("OPENAI_API_KEY")
-
-if not openai_key:
-    st.error(
-        "Please set the OPENAI_API_KEY environment variable to your OpenAI API key."
-    )
-else:
-    st.success("API key loaded from environment variable.")
-
 # File upload widget
 uploaded_file = st.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
 
-# Proceed only if both the file is uploaded and the API key is provided
-if uploaded_file is not None and openai_key:
+# Proceed only if file is uploaded (API key check already handled above)
+if uploaded_file is not None:
     # Preprocess and save the uploaded file
     with tempfile.TemporaryDirectory() as _tmp_dir:
         tmp_dir = Path(_tmp_dir)
