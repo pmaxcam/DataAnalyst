@@ -63,32 +63,3 @@ def preprocess_csv_file(dataframe: pd.DataFrame, openai_client: OpenAI) -> pd.Da
     except Exception as e:
         print(f"Error during preprocessingf: {e}")
         return dataframe
-
-
-def guess_column_descriptions(df: pd.DataFrame, openai_client: OpenAI) -> dict:
-    ColumnDescriptions: type[BaseModel] = create_model(
-        "ColumnDescriptions",
-        **{
-            col_name: (str, ...)
-            for col_name in df.columns
-            if len(col_name) > 0 and col_name[0] != "_"
-        }
-    )
-    
-    _prompt = """
-Provide the business context of each column in the csv below
-
-<csv_data>
-{csv_data}
-</csv_data>
-"""
-    completion = openai_client.beta.chat.completions.parse(
-        model="gpt-4o-mini-2024-07-18",
-        messages=[
-            {"role": "system", "content": "You are a data analyst."},
-            {"role": "user", "content": _prompt.format(csv_data=df.to_csv())},
-        ],
-        response_format=ColumnDescriptions,
-    )
-    column_descriptions = completion.choices[0].message.parsed
-    return column_descriptions.model_dump()
