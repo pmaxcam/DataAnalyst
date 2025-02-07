@@ -16,6 +16,13 @@ import traceback
 from dotenv import load_dotenv
 from utils import preprocess_csv_file, guess_column_descriptions
 
+# Add this class before your main code
+class PathJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Path):
+            return str(obj)
+        return super().default(obj)
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -152,6 +159,38 @@ def preprocess_and_save(file, tmp_dir: Path):
         st.error(f"Error processing file: {e}")
         return None, None, None, None
 
+def create_visualization(x_values, y_values, title=None):
+    try:
+        if not x_values or not y_values:
+            st.error("No data available for visualization")
+            return
+
+        # Create a DataFrame from the x and y values
+        chart_data = pd.DataFrame({
+            'x': x_values,
+            'y': y_values
+        })
+        
+        # Set the index for the line chart
+        chart_data.set_index('x', inplace=True)
+
+        # Add title if provided
+        if title:
+            st.subheader(title)
+        
+        # Create the line chart
+        st.subheader("Line chart")
+        st.line_chart(chart_data)
+        st.subheader("Bar chart")
+        st.bar_chart(chart_data)
+        
+            
+    except Exception as e:
+        st.error(f"Error creating visualization: {e}")
+        st.write("Debug info:")
+        st.write(f"X values: {x_values[:5]} ...")
+        st.write(f"Y values: {y_values[:5]} ...")
+
 
 # Streamlit app
 st.title("📊 Data Analyst Agent")
@@ -185,7 +224,7 @@ if uploaded_file is not None and openai_key:
             # Initialize the DuckDbAgent with enhanced system prompt
             duckdb_agent = DuckDbAgent(
                 model=OpenAIChat(model="gpt-4o", api_key=openai_key),
-                semantic_model=json.dumps(semantic_model, default=str),
+                semantic_model=json.dumps(semantic_model, cls=PathJSONEncoder),
                 tools=[PandasTools()],
                 markdown=True,
                 add_history_to_messages=False,
@@ -197,6 +236,29 @@ if uploaded_file is not None and openai_key:
     3. Consider common data variations (spaces, underscores, case sensitivity)
     4. Generate SQL queries that are robust to these variations
     Return only the SQL query, enclosed in ```sql ``` and give the final answer.""",
+            )
+            
+            duckdb_visualizer = DuckDbAgent(
+                model=OpenAIChat(model="gpt-4", api_key=openai_key),
+                semantic_model=json.dumps(semantic_model, cls=PathJSONEncoder),
+                tools=[PandasTools()],
+                markdown=True,
+                add_history_to_messages=False,
+                followups=False,
+                read_tool_call_history=False,
+                system_prompt="""You are an expert data analyst and visualization specialist. When analyzing data:
+    1. First examine the column metadata and sample values to understand the data format
+    2. Analyze the data and prepare it for visualization
+    3. MAKE SUER YOU Return the data in the following format:
+    ```viz
+    {
+        "type": "line",
+        "x_values": [...], // array of x-axis values
+        "y_values": [...], // array of y-axis values
+        "title": "Chart Title"
+    }
+    ```
+    Make sure to return only numeric values for y_values and appropriate values for x_values."""
             )
 
             # Main query input widget
@@ -211,21 +273,64 @@ if uploaded_file is not None and openai_key:
                     try:
                         with st.spinner("Processing your query..."):
                             response_placeholder = st.empty()
-
-                            # Capture the streamed response
-                            response = duckdb_agent.run(
-                                user_query, stream=True
-                            )  # Assuming run supports streaming
-
-                            # If response is an iterator or generator
                             full_response = ""
-                            for chunk in response:
-                                if hasattr(chunk, "content"):
-                                    content = chunk.content
-                                else:
-                                    content = str(chunk)
-                                full_response += content
-                                response_placeholder.markdown(full_response)
+                            
+                            
+                            if "@plot" in user_query:
+                                user_query = user_query + """    
+                                MAKE SUER YOU Return the data in the following format:
+                                ```viz
+                                {
+                                    "type": "line",
+                                    "x_values": [...], // array of x-axis values
+                                    "y_values": [...], // array of y-axis values
+                                    "title": "Chart Title"
+                                }
+                                ```
+                                Make sure to return only numeric values for y_values and appropriate values for x_values."""
+
+                                response = duckdb_visualizer.run(user_query,show_function_calls=True, stream=True)
+                                counter= 0
+                        
+                                # Process the response to find visualization config
+                                for chunk in response:
+                                    content = chunk.content if hasattr(chunk, 'content') else str(chunk)
+                                    full_response += content
+                                    
+                                    # Look for viz configuration.
+                                    viz_match = re.search(r'```viz\n(.*?)```', full_response, re.DOTALL)
+                                    if viz_match and counter == 0:
+                                        counter += 1
+                                        # st.write("Visualization configuration found")
+                                        try:
+                                            viz_config = json.loads(viz_match.group(1))
+                                            
+                                            # Create visualization directly from the provided data
+                                            create_visualization(
+                                                x_values=viz_config.get('x_values'),
+                                                y_values=viz_config.get('y_values'),
+                                                title=viz_config.get('title')
+                                            )
+                                        except json.JSONDecodeError:
+                                            st.error("Invalid visualization configuration")
+                                        except Exception as e:
+                                            st.error(f"Error creating visualization: {e}")
+                                    
+                                    response_placeholder.markdown(full_response)
+                            else:
+                                # Capture the streamed response
+                                response = duckdb_agent.run(
+                                    user_query, stream=True
+                                )  # Assuming run supports streaming
+
+                                # If response is an iterator or generator
+                                for chunk in response:
+                                    if hasattr(chunk, "content"):
+                                        content = chunk.content
+                                    else:
+                                        content = str(chunk)
+                                    full_response += content
+                                    response_placeholder.markdown(full_response)
 
                     except Exception as e:
                         st.error(f"Error generating response from the DuckDbAgent: {e}")
