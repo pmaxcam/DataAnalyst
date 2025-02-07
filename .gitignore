@@ -1,6 +1,5 @@
 # Environment variables
 .env
-secrets.toml
 
 # Python
 __pycache__/
